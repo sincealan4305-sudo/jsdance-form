@@ -432,6 +432,7 @@ body {
 }
 
 .field.invalid input { border-color: #e53935; }
+.field.invalid select { border-color: #e53935 !important; }
 .field.invalid .err { display: block; }
 .field.invalid .course-options { outline: 2px solid #e53935; border-radius: 4px; }
 .field.invalid .check-row { border-color: #e53935; }
@@ -578,7 +579,18 @@ body {
 
       <div class="field" id="f-birth">
         <label>生日 <span class="req">*</span></label>
-        <input type="date" id="inp-birth">
+        <div style="display:flex; gap:8px;">
+          <select id="inp-birth-y" style="flex:2; border:1px solid #ccc; border-radius:4px; padding:11px 10px; font-family:inherit; font-size:15px; color:#222; background:#fff; outline:none; -webkit-appearance:none; appearance:none; background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 viewBox=%220 0 12 8%22><path fill=%22%23999%22 d=%22M6 8L0 0h12z%22/></svg>'); background-repeat:no-repeat; background-position:right 10px center;">
+            <option value="">年</option>
+          </select>
+          <select id="inp-birth-m" style="flex:1; border:1px solid #ccc; border-radius:4px; padding:11px 10px; font-family:inherit; font-size:15px; color:#222; background:#fff; outline:none; -webkit-appearance:none; appearance:none; background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 viewBox=%220 0 12 8%22><path fill=%22%23999%22 d=%22M6 8L0 0h12z%22/></svg>'); background-repeat:no-repeat; background-position:right 10px center;">
+            <option value="">月</option>
+          </select>
+          <select id="inp-birth-d" style="flex:1; border:1px solid #ccc; border-radius:4px; padding:11px 10px; font-family:inherit; font-size:15px; color:#222; background:#fff; outline:none; -webkit-appearance:none; appearance:none; background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 viewBox=%220 0 12 8%22><path fill=%22%23999%22 d=%22M6 8L0 0h12z%22/></svg>'); background-repeat:no-repeat; background-position:right 10px center;">
+            <option value="">日</option>
+          </select>
+        </div>
+        <div class="hint">請選擇出生年月日</div>
         <div class="err">請選擇生日</div>
       </div>
 
@@ -808,7 +820,7 @@ function validate() {
     { id: 'f-name',  pass: () => document.getElementById('inp-name').value.trim() !== '' },
     { id: 'f-phone', pass: () => /^[0-9\-\+\s]{8,15}$/.test(document.getElementById('inp-phone').value.trim()) },
     { id: 'f-email', pass: () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(document.getElementById('inp-email').value.trim()) },
-    { id: 'f-birth', pass: () => document.getElementById('inp-birth').value !== '' },
+    { id: 'f-birth', pass: () => document.getElementById('inp-birth-y').value !== '' && document.getElementById('inp-birth-m').value !== '' && document.getElementById('inp-birth-d').value !== '' },
     { id: 'f-id',    pass: () => /^[A-Za-z][0-9]{9}$/.test(document.getElementById('inp-id').value.trim()) },
     { id: 'f-remit', pass: () => /^[0-9]{5}$/.test(document.getElementById('inp-remit').value.trim()) },
     { id: 'f-course',  pass: () => !!document.querySelector('input[name="course"]:checked') },
@@ -843,7 +855,7 @@ async function submitForm() {
     姓名:     document.getElementById('inp-name').value.trim(),
     電話:     document.getElementById('inp-phone').value.trim(),
     Email:    document.getElementById('inp-email').value.trim(),
-    生日:     document.getElementById('inp-birth').value,
+    生日:     document.getElementById('inp-birth-y').value + '-' + document.getElementById('inp-birth-m').value.padStart(2,'0') + '-' + document.getElementById('inp-birth-d').value.padStart(2,'0'),
     身分證字號: document.getElementById('inp-id').value.trim().toUpperCase(),
     匯款末五碼: document.getElementById('inp-remit').value.trim(),
     報名課程:  radio.value,
@@ -880,6 +892,35 @@ async function submitForm() {
     document.getElementById('spinner').style.display = 'none';
   }
 }
+
+// ── Init birth selects ──
+(function() {
+  const yEl = document.getElementById('inp-birth-y');
+  const mEl = document.getElementById('inp-birth-m');
+  const dEl = document.getElementById('inp-birth-d');
+
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear - 10; y >= currentYear - 80; y--) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y + ' 年';
+    yEl.appendChild(opt);
+  }
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m + ' 月';
+    mEl.appendChild(opt);
+  }
+  for (let d = 1; d <= 31; d++) {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d + ' 日';
+    dEl.appendChild(opt);
+  }
+  [yEl, mEl, dEl].forEach(el => {
+    el.addEventListener('focus', () => el.style.borderColor = '#e91e8c');
+    el.addEventListener('blur', () => el.style.borderColor = '#ccc');
+    el.addEventListener('change', () => document.getElementById('f-birth').classList.remove('invalid'));
+  });
+})();
 
 // Load quota when page opens
 loadQuota();
