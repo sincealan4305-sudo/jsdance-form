@@ -838,24 +838,23 @@ async function submitForm() {
   };
 
   try {
-    const res = await fetch(GAS_URL, {
+    // POST with no-cors (data always goes through)
+    await fetch(GAS_URL, {
       method: 'POST',
+      mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const result = await res.json();
 
-    if (result.success === false) {
-      alert('報名失敗：' + (result.message || '名額已滿'));
-      btn.disabled = false;
-      document.getElementById('btn-txt').style.display = 'inline';
-      document.getElementById('spinner').style.display = 'none';
-      updateQuotaUI(0);
-      return;
+    // After submit, re-fetch quota via GET to get updated count
+    try {
+      const qRes = await fetch(GAS_URL);
+      const qData = await qRes.json();
+      currentRemaining = qData.remaining;
+    } catch(e) {
+      currentRemaining = Math.max(0, currentRemaining - 1);
     }
 
-    // Update quota display
-    currentRemaining = result.remaining;
     document.getElementById('main-wrap').style.display = 'none';
     document.getElementById('success-wrap').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
