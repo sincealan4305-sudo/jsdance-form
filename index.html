@@ -107,6 +107,65 @@ body {
   text-align: left;
 }
 
+
+/* ── Quota Box ── */
+.quota-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff3f8;
+  border: 2px solid #e91e8c;
+  border-radius: 6px;
+  padding: 14px 20px;
+  margin-top: 12px;
+}
+
+.quota-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.quota-count {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e91e8c;
+  min-width: 60px;
+  text-align: right;
+}
+
+.quota-count.loading {
+  font-size: 14px;
+  color: #aaa;
+}
+
+.quota-full {
+  background: #fff0f0;
+  border-color: #e53935;
+}
+
+.quota-full .quota-label { color: #e53935; }
+.quota-full .quota-count { color: #e53935; }
+
+/* ── Full overlay ── */
+.form-disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.full-banner {
+  display: none;
+  background: #e53935;
+  color: #fff;
+  text-align: center;
+  padding: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  letter-spacing: 0.05em;
+}
+
 /* ── Section Card ── */
 .section-card {
   padding: 0;
@@ -469,7 +528,15 @@ body {
         ✅ 匯款完成後請加入官方 Line 告知小編，確認後才算報名完成
       </div>
     </div>
+      <div class="quota-box" id="quota-box">
+        <div class="quota-label">🎯 報名名額剩餘</div>
+        <div class="quota-count loading" id="quota-count">查詢中…</div>
+      </div>
+    </div>
   </div>
+
+  <!-- ── Full Banner ── -->
+  <div class="full-banner" id="full-banner">⚠️ 報名名額已滿，感謝您的踴躍參與！</div>
 
   <!-- ── 基本資料 ── -->
   <div class="card section-card">
@@ -654,6 +721,44 @@ body {
 
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwKZptUb9Ae-32qvBKZVN4yXISghJya4d3OGEE6RC7UI1iEtDO7KmlWdut2zV6V8d9I/exec';
+let currentRemaining = 20;
+
+// ── Load quota on page load ──
+async function loadQuota() {
+  try {
+    const res = await fetch(GAS_URL);
+    const data = await res.json();
+    currentRemaining = data.remaining;
+    updateQuotaUI(currentRemaining);
+  } catch (e) {
+    document.getElementById('quota-count').textContent = '查詢失敗';
+  }
+}
+
+function updateQuotaUI(remaining) {
+  const countEl = document.getElementById('quota-count');
+  const boxEl = document.getElementById('quota-box');
+  const bannerEl = document.getElementById('full-banner');
+  const formEl = document.getElementById('main-wrap');
+
+  countEl.classList.remove('loading');
+
+  if (remaining <= 0) {
+    countEl.textContent = '名額已滿';
+    boxEl.classList.add('quota-full');
+    bannerEl.style.display = 'block';
+    // Disable form interactions
+    document.querySelectorAll('input, button').forEach(el => el.disabled = true);
+    document.getElementById('btn-sub').style.display = 'none';
+  } else {
+    countEl.textContent = remaining + ' / 20 名';
+    if (remaining <= 5) {
+      boxEl.style.borderColor = '#ff9800';
+      countEl.style.color = '#e65100';
+      document.querySelector('.quota-label').textContent = '🔥 名額即將額滿';
+    }
+  }
+}
 
 // ── Course → amount ──
 document.querySelectorAll('input[name="course"]').forEach(r => {
@@ -705,6 +810,10 @@ function validate() {
 
 // ── Submit ──
 async function submitForm() {
+  if (currentRemaining <= 0) {
+    alert('報名名額已滿！');
+    return;
+  }
   if (!validate()) {
     const first = document.querySelector('.field.invalid');
     if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -729,12 +838,24 @@ async function submitForm() {
   };
 
   try {
-    await fetch(GAS_URL, {
+    const res = await fetch(GAS_URL, {
       method: 'POST',
-      mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    const result = await res.json();
+
+    if (result.success === false) {
+      alert('報名失敗：' + (result.message || '名額已滿'));
+      btn.disabled = false;
+      document.getElementById('btn-txt').style.display = 'inline';
+      document.getElementById('spinner').style.display = 'none';
+      updateQuotaUI(0);
+      return;
+    }
+
+    // Update quota display
+    currentRemaining = result.remaining;
     document.getElementById('main-wrap').style.display = 'none';
     document.getElementById('success-wrap').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -745,6 +866,9 @@ async function submitForm() {
     document.getElementById('spinner').style.display = 'none';
   }
 }
+
+// Load quota when page opens
+loadQuota();
 </script>
 
 </body>
